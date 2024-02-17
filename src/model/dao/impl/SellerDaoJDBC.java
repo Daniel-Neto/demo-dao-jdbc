@@ -4,7 +4,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import db.DB;
 import db.DbException;
@@ -89,6 +92,50 @@ public class SellerDaoJDBC implements SellerDao {
 	public List<Seller> findAll() {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+
+	@Override
+	public List<Seller> findByDepartment(Department department){
+		PreparedStatement st = null;
+		ResultSet rs = null;
+		List<Seller> sellers = new ArrayList<>();
+		
+		try {
+			st = conn.prepareStatement("SELECT seller.*, department.Name as DepName FROM seller "
+									+ "INNER JOIN department ON department.Id = seller.DepartmentId "
+									+ "WHERE department.Id = ? ORDER BY Name");
+			
+			st.setInt(1, department.getId());
+			rs = st.executeQuery();
+			
+			Map<Integer,Department> map = new HashMap<>();
+
+			while(rs.next()) {
+				
+				// Essa verificação serve para instanciar apenas um objeto Departmento em memória, verificando
+				// se o Department já existe. Isso evita repetição de objetos.
+				
+				Department dep = map.get(rs.getInt("DepartmentId")); // Obtém o department se ele existir
+				if(dep == null) {
+					dep = instantiateDepartment(rs);
+					map.put(rs.getInt("DepartmentId"), dep); // se não existe, insere no map
+				}
+				
+				Seller seller = instantiateSeller(rs, dep);
+				sellers.add(seller);
+			}
+			
+			return sellers;
+			
+		}
+		catch (SQLException e) {
+			throw new DbException(e.getMessage());
+		}
+		finally {
+			DB.closeResultSet(rs);
+			DB.closeStatement(st);
+		}
 	}
 
 }
